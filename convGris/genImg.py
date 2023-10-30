@@ -3,7 +3,7 @@ from PIL import Image
 def generar_imagen_desde_txt(entrada_path, salida_path):
     with open(entrada_path, "r") as archivo:
         # Leer las dimensiones de la imagen
-        m, n = map(int, archivo.readline().strip().split())
+        n, m = map(int, archivo.readline().strip().split())
 
         # Leer la matriz de niveles de gris
         matriz_gris = []

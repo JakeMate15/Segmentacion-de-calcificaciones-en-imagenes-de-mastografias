@@ -17,19 +17,19 @@ int main(){
         for(int j = 0; j < m; j++) {
             cin >> a[i][j];
             his[a[i][j]]++;
-            cout << a[i][j] << "\t";
+            //cout << a[i][j] << "\t";
         }
-        cout << "\n";
+        //cout << "\n";
     }
 
-    cout << "\n\nHistograma original\n";
+    //cout << "\n\nHistograma original\n";
 
     //Impresión de las frecuencias de cada valor de gris
     for(auto [g, rep]: his) {
         cout << g << " " << rep << "\n";
     }
 
-    cout << "\n";
+    //cout << "\n";
 
     //Cálculo de la probabilidad de aparición de cada nivel de gris
     vector<ld> pg(256);
@@ -38,7 +38,7 @@ int main(){
         //cout << "P(" << i << "): " << pg[i] << "\n";
     }
 
-    cout << "\n";
+    //cout << "\n";
 
     //Cálculo de gmax y gmin
     int gMin = ((*his.begin()).first), gMx = (*prev(his.end())).first;
@@ -60,8 +60,8 @@ int main(){
         }
     }
 
-    cout << "Nueva imagen\n";
-
+    //cout << "Nueva imagen\n";
+    cout << n << " " << m << '\n';
     for(int i = 0; i < n; i++) {
         for(int j = 0; j < m; j++) {
             cout << a[i][j] << "\t";
@@ -69,7 +69,7 @@ int main(){
         cout << "\n";
     }
 
-    cout << "Nuevo histograma\n";
+    //cout << "Nuevo histograma\n";
     //Impresión de las frecuencias de cada valor de gris del nuevo
     //Histograma
     for(auto [g, rep]: nvoHist) {
