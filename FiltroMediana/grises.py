@@ -1,3 +1,8 @@
+""" 
+    Para mejor manipulacion de las imagenes, 
+    es necesario llevarlas 
+    a una escala de grises 
+"""
 from PIL import Image
 
 def convertir_a_gris(imagen_path, salida_path):

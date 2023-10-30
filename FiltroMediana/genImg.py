@@ -1,5 +1,14 @@
 from PIL import Image
 
+""" 
+    Funcion en python para generar la imagen a partir de lo generado
+    con el programa en C++, ya que el programa en C++ genera un
+    archivo de texto con los datos ya transformados
+
+    Con ayuda del modulo PIL (pillow) y de la libreria Image, se 
+    genera la imagen en escala de grises
+"""
+
 def generar_imagen_desde_txt(entrada_path, salida_path):
     with open(entrada_path, "r") as archivo:
         # Leer las dimensiones de la imagen
