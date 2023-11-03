@@ -1,5 +1,5 @@
-#include <iostream>
-#include <vector>
+#include "bits/stdc++.h"
+
 #define UMBRAL 150
 #define BLANCO 255
 #define NEGRO   0
