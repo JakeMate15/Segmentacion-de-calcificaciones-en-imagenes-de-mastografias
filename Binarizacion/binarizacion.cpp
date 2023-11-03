@@ -1,6 +1,9 @@
 #include "bits/stdc++.h"
 
+// Valor del umbral (puede ser ajustado) para 
+// cambiar la salida de la binarización
 #define UMBRAL 150
+// Valores para binarizar, 255 es blanco y 0 es negro
 #define BLANCO 255
 #define NEGRO   0
 
