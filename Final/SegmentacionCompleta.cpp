@@ -65,13 +65,7 @@ void dfs(int i, int j, bool borde, int iAnterior, int jAnterior) {
     //cerr << i << " " << j << " " << borde << " " << iAnterior << " " << jAnterior << "\n";
     
     visitados[i][j] = true;
-
-    if(borde) {
-        resultado[i][j] = 0;
-    }
-    else{
-        resultado[i][j] = 255;
-    }
+    resultado[i][j] = borde ? 0 : 255;
 
     dfs(i, j + 1, borde, i, j);
     dfs(i + 1, j, borde, i, j);
