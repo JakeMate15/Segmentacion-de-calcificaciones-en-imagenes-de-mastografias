@@ -1,18 +1,28 @@
+import argparse
 from skimage import io
+from skimage.exposure import equalize_hist
 import numpy as np
 from PIL import Image
 from scipy import ndimage
 import matplotlib.pyplot as plt
 
 # Cargar la imagen
-image_path = 'enfermo.jpg'
+parser = argparse.ArgumentParser(description='Procesar una imagen.')
+parser.add_argument('image_path', type=str, help='La ruta a la imagen que se procesará')
+args = parser.parse_args()
+image_path = args.image_path
 image = Image.open(image_path)
 
 # Convertir a escala de grises
-gray_image = image.convert('L')
+imgGrises = image.convert('L')
+
+# Ecualizar la imagen
+imgGrises = equalize_hist(np.array(imgGrises))
+imgGrises = Image.fromarray((imgGrises * 255).astype(np.uint8))
+imgGrises.save('imgEcualizada.jpg')
 
 # Convertir la imagen PIL a un array de numpy
-np_image = np.array(gray_image)
+np_image = np.array(imgGrises)
 
 # Crear la máscara binaria para el top 10% más brillante
 p90_threshold = np.percentile(np_image, 90)
@@ -44,9 +54,37 @@ final_image = binary_mask & mask
 
 # Convertir la máscara binaria a una imagen PIL y guardarla
 result_image = Image.fromarray((final_image * 255).astype(np.uint8))
-result_image.save('imagen_resultado.png')
+result_image.save('imagen_umbralizada.png')
 
 # Mostrar la imagen resultante
 plt.imshow(final_image, cmap='gray')
 plt.axis('off')
 plt.show()
+
+
+# Cargar las imágenes
+imagen1 = Image.open(image_path).convert("RGB")
+imagen2 = Image.open("imagen_umbralizada.png").convert("RGB")
+
+pixeles2 = imagen2.load()
+for i in range(imagen2.size[0]):
+    for j in range(imagen2.size[1]):
+        if pixeles2[i, j] == (255, 255, 255):  # Blanco
+            pixeles2[i, j] = (255, 0, 0)  # Rojo
+
+if imagen1.size != imagen2.size:
+    imagen2 = imagen2.resize(imagen1.size)
+
+# Aplicar la operación OR
+pixeles1 = imagen1.load()
+pixeles2 = imagen2.load()
+
+for i in range(imagen1.size[0]):
+    for j in range(imagen1.size[1]):
+        r = pixeles1[i, j][0] | pixeles2[i, j][0]
+        g = pixeles1[i, j][1] | pixeles2[i, j][1]
+        b = pixeles1[i, j][2] | pixeles2[i, j][2]
+        pixeles1[i, j] = (r, g, b)
+
+# Guardar o mostrar la imagen resultante
+imagen1.save("imagenSegmentada.jpg")
