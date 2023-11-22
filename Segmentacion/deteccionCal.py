@@ -130,30 +130,24 @@ def segmentacion(ruta, rutaOriginal):
 
 
 def area_y_perimetro(image_path):
-    # Load the image and convert it to black and white
     image = Image.open(image_path)
-    bw_image = image.convert('1')  # Convert to black-and-white (1 bit per pixel)
+    imgBn = image.convert('1')
 
-    # Convert image to a numpy array
-    image_array = np.array(bw_image)
+    imgArr = np.array(imgBn)
 
-    # Invert the image to consider white as the object for contour detection
-    imagenInvertida = np.invert(image_array)
+    # Inverso de la imagen
+    imagenInvertida = np.invert(imgArr)
     contours, _ = cv2.findContours(imagenInvertida.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
-    # Calculate the area of the white regions
+    # Suma de las regiones de interes
     area = np.sum(imagenInvertida)
 
     # Calculo del perimetro calculando la logitud de cada contorno
     perimetro = sum(cv2.arcLength(cnt, True) for cnt in contours)
 
-    # Create a new black image to draw the contours
     imagen_contorno = np.zeros(imagenInvertida.shape, dtype=np.uint8)
-
-    # Draw the contours on the new image
     cv2.drawContours(imagen_contorno, contours, -1, 255, 1)
 
-    # Convert the new contour image to a PIL Image and save it with a new filename
     contour_pil_image = Image.fromarray(imagen_contorno)
     ruta_contorno = image_path.replace('.png', '_contours.png')
     contour_pil_image.save(ruta_contorno)
