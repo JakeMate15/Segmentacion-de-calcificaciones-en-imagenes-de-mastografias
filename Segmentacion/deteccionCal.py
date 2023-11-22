@@ -1,11 +1,9 @@
 import cv2
 import numpy as np
 import argparse
-from skimage import io
-from skimage.exposure import equalize_hist
 from PIL import Image
 from scipy import ndimage
-
+import matplotlib.pyplot as plt
 
 def preProcesamiento(ruta):
     img_orignal = ruta
@@ -44,21 +42,32 @@ def preProcesamiento(ruta):
 
     return imagen_umbralizada
 
+def ajustar_gamma(image, gamma):
+    inv_gamma = 1.0 / gamma
+    table = np.array([((i / 255.0) ** inv_gamma) * 255 for i in np.arange(256)]).astype("uint8")
+
+    return cv2.LUT(image, table)
+
+
 def segmentacion(ruta, rutaOriginal):
     image = Image.open(ruta)
 
-    # Convertir a escala de grises
     imgGrises = image.convert('L')
-
-    # Convertir la imagen PIL a un array de numpy
     np_image = np.array(imgGrises)
+    np_image = ajustar_gamma(np_image, 0.1)
+    np_image = ajustar_gamma(np_image, 0.1)
 
-    # Crear la máscara binaria para el top 10% más brillante
-    p90_threshold = np.percentile(np_image, 90)
-    binary_mask = np_image > p90_threshold
+    # plt.imshow(np_image, cmap='gray')
+    # plt.title(f'Imagen con Gamma {2.0}')
+    # plt.axis('off')
+    # plt.show()
+
+    # Crear la máscara binaria para el top % más brillante
+    umbral = np.percentile(np_image, 98)
+    mascara = np_image > umbral
 
     # Identificar los componentes conectados
-    labeled_array, num_features = ndimage.label(binary_mask)
+    labeled_array, num_features = ndimage.label(mascara)
 
     # Crear una máscara que será True para los componentes que deseamos mantener
     mask = np.ones_like(labeled_array, dtype=bool)
@@ -79,7 +88,7 @@ def segmentacion(ruta, rutaOriginal):
             mask[labeled_array == label_num] = False
 
     # Aplicar la máscara para obtener la imagen final
-    final_image = binary_mask & mask
+    final_image = mascara & mask
 
     # Convertir la máscara binaria a una imagen PIL y guardarla
     result_image = Image.fromarray((final_image * 255).astype(np.uint8))
@@ -129,19 +138,17 @@ def area_y_perimetro(image_path):
     image_array = np.array(bw_image)
 
     # Invert the image to consider white as the object for contour detection
-    inverted_image_array = np.invert(image_array)
-
-    # Find the contours of the white objects
-    contours, _ = cv2.findContours(inverted_image_array.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    imagenInvertida = np.invert(image_array)
+    contours, _ = cv2.findContours(imagenInvertida.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     # Calculate the area of the white regions
-    area = np.sum(inverted_image_array)
+    area = np.sum(imagenInvertida)
 
-    # Calculate the perimetro by summing the length of each contour
+    # Calculo del perimetro calculando la logitud de cada contorno
     perimetro = sum(cv2.arcLength(cnt, True) for cnt in contours)
 
     # Create a new black image to draw the contours
-    imagen_contorno = np.zeros(inverted_image_array.shape, dtype=np.uint8)
+    imagen_contorno = np.zeros(imagenInvertida.shape, dtype=np.uint8)
 
     # Draw the contours on the new image
     cv2.drawContours(imagen_contorno, contours, -1, 255, 1)
@@ -172,6 +179,12 @@ def main():
     
     mediciones = np.hstack((areas, perimetros))
     resultados = np.hstack((original, img_segmentada))
+
+    w, h, c = areas.shape
+    area = w * h - area
+
+    print(int(area))
+    print(int(perimetro))
 
     cv2.imshow('Resultados', resultados)
     cv2.imshow('Mediciones', mediciones)
