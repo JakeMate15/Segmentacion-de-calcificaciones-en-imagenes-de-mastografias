@@ -18,3 +18,8 @@ python3 deteccion.py nombre.formato
 <p  align="center">
 	<img  src="vista.jpg"  alt="Resultado de deteccion">
 </p>
+
+
+## Licencia
+
+Este proyecto está licenciado bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para más detalles.
