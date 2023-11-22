@@ -4,6 +4,7 @@ import argparse
 from PIL import Image
 from scipy import ndimage
 import matplotlib.pyplot as plt
+import matplotlib.image as mpimg
 
 def preProcesamiento(ruta):
     img_orignal = ruta
@@ -137,20 +138,20 @@ def area_y_perimetro(image_path):
 
     # Inverso de la imagen
     imagenInvertida = np.invert(imgArr)
-    contours, _ = cv2.findContours(imagenInvertida.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+    contornos, _ = cv2.findContours(imagenInvertida.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     # Suma de las regiones de interes
     area = np.sum(imagenInvertida)
 
     # Calculo del perimetro calculando la logitud de cada contorno
-    perimetro = sum(cv2.arcLength(cnt, True) for cnt in contours)
+    perimetro = sum(cv2.arcLength(cnt, True) for cnt in contornos)
 
     imagen_contorno = np.zeros(imagenInvertida.shape, dtype=np.uint8)
-    cv2.drawContours(imagen_contorno, contours, -1, 255, 1)
+    cv2.drawContours(imagen_contorno, contornos, -1, 255, 1)
 
-    contour_pil_image = Image.fromarray(imagen_contorno)
-    ruta_contorno = image_path.replace('.png', '_contours.png')
-    contour_pil_image.save(ruta_contorno)
+    imgContorno = Image.fromarray(imagen_contorno)
+    ruta_contorno = image_path.replace('.png', '_contornos.png')
+    imgContorno.save(ruta_contorno)
 
     return area, perimetro, ruta_contorno
 
@@ -166,25 +167,41 @@ def main():
     area, perimetro, ruta_contorno = area_y_perimetro('imagen_umbralizada.png')
     img_segmentada = 'imagenSegmentada.jpg'
 
-    areas = cv2.imread(mascara_segmentacion)
-    perimetros = cv2.imread(ruta_contorno)
+    areas = mpimg.imread(mascara_segmentacion)
+    perimetros = mpimg.imread(ruta_contorno)
+    img_segmentada = mpimg.imread('imagenSegmentada.jpg')
+    original = mpimg.imread(ruta)
 
-    img_segmentada = cv2.imread(img_segmentada)
-    
-    mediciones = np.hstack((areas, perimetros))
-    resultados = np.hstack((original, img_segmentada))
-
-    w, h, c = areas.shape
+    w, h = areas.shape[:2]
     area = w * h - area
 
-    print(int(area))
-    print(int(perimetro))
+    plt.figure(figsize=(10, 10))
 
-    cv2.imshow('Resultados', resultados)
-    cv2.imshow('Mediciones', mediciones)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+    # Mostrar las imágenes
+    plt.subplot(2, 2, 1)
+    plt.imshow(areas, cmap = 'gray')
+    plt.axis('off')
+    plt.title('Áreas')
 
+    plt.subplot(2, 2, 2)
+    plt.imshow(perimetros, cmap = 'gray')
+    plt.axis('off')
+    plt.title('Perímetros')
+
+    plt.subplot(2, 2, 3)
+    plt.imshow(original)
+    plt.axis('off')
+    plt.title('Original')
+
+    plt.subplot(2, 2, 4)
+    plt.imshow(img_segmentada)
+    plt.axis('off')
+    plt.title('Segmentada')
+
+    plt.figtext(0.5, 0.04, f'Área: {int(area)} px, Perímetro: {int(perimetro)} px', ha="center", fontsize=12, bbox={"facecolor":"orange", "alpha":0.5, "pad":5})
+    plt.title("Sementacion de Calcificaciones")
+
+    plt.show()
 
 
 
