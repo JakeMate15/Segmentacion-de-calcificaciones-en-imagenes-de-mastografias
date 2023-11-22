@@ -7,25 +7,24 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 
 # Cargar la imagen
+"""
 parser = argparse.ArgumentParser(description='Procesar una imagen.')
 parser.add_argument('image_path', type=str, help='La ruta a la imagen que se procesará')
 args = parser.parse_args()
 image_path = args.image_path
+"""
+image_path = 'imagen_resultante.jpg'
 image = Image.open(image_path)
+
 
 # Convertir a escala de grises
 imgGrises = image.convert('L')
-
-# Ecualizar la imagen
-imgGrises = equalize_hist(np.array(imgGrises))
-imgGrises = Image.fromarray((imgGrises * 255).astype(np.uint8))
-imgGrises.save('imgEcualizada.jpg')
 
 # Convertir la imagen PIL a un array de numpy
 np_image = np.array(imgGrises)
 
 # Crear la máscara binaria para el top 10% más brillante
-p90_threshold = np.percentile(np_image, 90)
+p90_threshold = np.percentile(np_image, 95)
 binary_mask = np_image > p90_threshold
 
 # Identificar los componentes conectados
