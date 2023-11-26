@@ -5,6 +5,15 @@ from PIL import Image
 from scipy import ndimage
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+from PIL import Image, ImageFilter
+
+coord_x = None
+coord_y = None
+valoresArea = None
+valoresPerimetro = None
+areaComponente = None
+perimetroComponente = None
+
 
 def preProcesamiento(ruta):
     img_orignal = ruta
@@ -26,20 +35,11 @@ def preProcesamiento(ruta):
     umbral = 30  # Puedes ajustar este valor según tus necesidades
     imagen_umbralizada = cv2.threshold(imagen, umbral, 255, cv2.THRESH_BINARY)[1]
 
-    # cv2.imshow('nc', imagen_original)
-
     # Aplica la máscara a la imagen a color
     imagen_resultante = cv2.bitwise_and(imagen_ecualizada, imagen_ecualizada, mask=imagen_umbralizada)
 
     # Guarda la imagen resultante
     cv2.imwrite('imagen_resultante.jpg', imagen_resultante)
-
-    # Muestra la imagen original, la imagen umbralizada y la imagen resultante
-    # cv2.imshow('Imagen Original', imagen_original)
-    # cv2.imshow('Imagen Umbralizada', imagen_umbralizada)
-    # cv2.imshow('Imagen Resultante', imagen_resultante)
-    # cv2.waitKey(0)
-    # cv2.destroyAllWindows()
 
     return imagen_umbralizada
 
@@ -57,11 +57,6 @@ def segmentacion(ruta, rutaOriginal):
     np_image = np.array(imgGrises)
     np_image = ajustar_gamma(np_image, 0.1)
     np_image = ajustar_gamma(np_image, 0.1)
-
-    # plt.imshow(np_image, cmap='gray')
-    # plt.title(f'Imagen con Gamma {2.0}')
-    # plt.axis('off')
-    # plt.show()
 
     # Crear la máscara binaria para el top % más brillante
     umbral = np.percentile(np_image, 98)
@@ -93,13 +88,10 @@ def segmentacion(ruta, rutaOriginal):
 
     # Convertir la máscara binaria a una imagen PIL y guardarla
     result_image = Image.fromarray((final_image * 255).astype(np.uint8))
+    for _ in range(4):
+        result_image = result_image.filter(ImageFilter.MedianFilter(size=3))
+    
     result_image.save('imagen_umbralizada.png')
-
-    # Mostrar la imagen resultante
-    # plt.imshow(final_image, cmap='gray')
-    # plt.axis('off')
-    # plt.show()
-
 
     # Cargar las imágenes
     imagen1 = Image.open(rutaOriginal).convert("RGB")
@@ -129,31 +121,119 @@ def segmentacion(ruta, rutaOriginal):
 
     return 'imagen_umbralizada.png'
 
+def etiquetar_objetos(matriz):
+    etiqueta = 0
+    etiquetas = {}
+    for i in range(len(matriz)):
+        for j in range(len(matriz[i])):
+            if matriz[i][j] == 1:
+                vecinos = obtener_vecinos(etiquetas, i, j)
+                if not vecinos:
+                    etiqueta += 1
+                    etiquetas[(i, j)] = etiqueta
+                else:
+                    etiqueta_min = min(vecinos)
+                    etiquetas[(i, j)] = etiqueta_min
+                    actualizar_etiquetas(etiquetas, vecinos, etiqueta_min)
+    return etiquetas
 
-def area_y_perimetro(image_path):
-    image = Image.open(image_path)
-    imgBn = image.convert('1')
+def obtener_vecinos(etiquetas, i, j):
+    vecinos = []
+    for di, dj in [(-1, 0), (0, -1), (-1, -1), (1, -1)]:
+        if (i + di, j + dj) in etiquetas:
+            vecinos.append(etiquetas[(i + di, j + dj)])
+    return vecinos
 
-    imgArr = np.array(imgBn)
+def actualizar_etiquetas(etiquetas, vecinos, nueva_etiqueta):
+    for posicion in etiquetas:
+        if etiquetas[posicion] in vecinos:
+            etiquetas[posicion] = nueva_etiqueta
 
-    # Inverso de la imagen
-    imagenInvertida = np.invert(imgArr)
-    contornos, _ = cv2.findContours(imagenInvertida.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+def calcular_area_perimetro(etiquetas, matriz):
+    areas = {}
+    perimetros = {}
+    for posicion, etiqueta in etiquetas.items():
+        i, j = posicion
+        if etiqueta not in areas:
+            areas[etiqueta] = 0
+        if etiqueta not in perimetros:
+            perimetros[etiqueta] = 0
+        areas[etiqueta] += 1
+        perimetros[etiqueta] += contar_bordes(matriz, i, j)
 
-    # Suma de las regiones de interes
-    area = np.sum(imagenInvertida)
+    return areas, perimetros
 
-    # Calculo del perimetro calculando la logitud de cada contorno
-    perimetro = sum(cv2.arcLength(cnt, True) for cnt in contornos)
+def contar_bordes(matriz, i, j):
+    bordes = 0
+    for di, dj in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
+        if 0 <= i + di < len(matriz) and 0 <= j + dj < len(matriz[0]):
+            if matriz[i + di][j + dj] == 0:
+                bordes += 1
+        else:
+            bordes += 1
+    return bordes
 
-    imagen_contorno = np.zeros(imagenInvertida.shape, dtype=np.uint8)
-    cv2.drawContours(imagen_contorno, contornos, -1, 255, 1)
+def cal_area_y_perimetro(rutaImagen):
+    image = Image.open(rutaImagen)
+    imgBn = image.convert('1')  # Convertir a imagen binaria (blanco y negro)
 
-    imgContorno = Image.fromarray(imagen_contorno)
-    ruta_contorno = image_path.replace('.png', '_contornos.png')
-    imgContorno.save(ruta_contorno)
+    imgArr = np.array(imgBn)  # Convertir a matriz numpy
 
-    return area, perimetro, ruta_contorno
+    # Invertir la imagen: en PIL, '1' es blanco y '0' es negro
+    matriz_binaria = imgArr.astype(int)  # Convertir a matriz binaria de 0 y 1
+
+    etiquetas = etiquetar_objetos(matriz_binaria)
+    areas, perimetros = calcular_area_perimetro(etiquetas, matriz_binaria)
+
+    matriz_areas = [[0 for _ in range(len(matriz_binaria[0]))] for _ in range(len(matriz_binaria))]
+    matriz_perimetros = [[0 for _ in range(len(matriz_binaria[0]))] for _ in range(len(matriz_binaria))]
+
+    for (i, j), etiqueta in etiquetas.items():
+        matriz_areas[i][j] = areas[etiqueta]
+        matriz_perimetros[i][j] = perimetros[etiqueta]
+
+    return matriz_areas, matriz_perimetros
+
+
+
+def deteccionBordes(rutaImagen):
+    # Cargar la imagen y convertirla a escala de grises
+    image = Image.open(rutaImagen)
+    img_gray = image.convert('L')
+    img_array = np.array(img_gray)
+
+    # Aplicar el filtro Laplaciano
+    img_laplacian = cv2.Laplacian(img_array, cv2.CV_64F)
+
+    # Normalizar y convertir a uint8
+    img_laplacian = np.clip(img_laplacian, 0, 255)
+    img_laplacian = np.absolute(img_laplacian)  # Obtener el valor absoluto para asegurar que todos los valores sean positivos
+    img_laplacian = np.uint8(img_laplacian)
+
+    # Binarizar la imagen
+    _, img_bin = cv2.threshold(img_laplacian, 50, 255, cv2.THRESH_BINARY)
+
+    # Guardar la imagen resultante
+    img_contorno = Image.fromarray(img_bin)
+    ruta_contorno = rutaImagen.replace('.png', '_contornos_laplacian.png')
+    img_contorno.save(ruta_contorno)
+
+    return ruta_contorno
+
+def on_move(event):
+    global coord_x, coord_y, texto_area_perimetro
+    # Asegúrate de que el movimiento sea dentro de un eje
+    if event.inaxes is not None:
+        coord_x, coord_y = event.xdata, event.ydata
+
+        # Asegúrate de que las coordenadas estén dentro del rango
+        if 0 <= int(coord_y) < len(valoresArea) and 0 <= int(coord_x) < len(valoresArea[0]):
+            areaComponente = valoresArea[int(coord_y)][int(coord_x)]
+            perimetroComponente = valoresPerimetro[int(coord_y)][int(coord_x)]
+
+            # Actualiza el texto con los nuevos valores
+            texto_area_perimetro.set_text(f'Área: {areaComponente} px, Perímetro: {perimetroComponente} px')
+            plt.draw()  # Actualiza la figura
 
 def main():
     parser = argparse.ArgumentParser(description='Procesar una imagen.')
@@ -162,18 +242,18 @@ def main():
     ruta = args.ruta
     original = cv2.imread(ruta)
 
-    img_umbralizada = preProcesamiento(ruta)
+    preProcesamiento(ruta)
     mascara_segmentacion = segmentacion('imagen_resultante.jpg', ruta)
-    area, perimetro, ruta_contorno = area_y_perimetro('imagen_umbralizada.png')
+    ruta_contorno = deteccionBordes('imagen_umbralizada.png')
+
+    global valoresArea, valoresPerimetro, areaComponente, perimetroComponente
+    valoresArea, valoresPerimetro = cal_area_y_perimetro('imagen_umbralizada.png')
     img_segmentada = 'imagenSegmentada.jpg'
 
     areas = mpimg.imread(mascara_segmentacion)
     perimetros = mpimg.imread(ruta_contorno)
     img_segmentada = mpimg.imread('imagenSegmentada.jpg')
     original = mpimg.imread(ruta)
-
-    w, h = areas.shape[:2]
-    area = w * h - area
 
     plt.figure(figsize=(10, 10))
 
@@ -198,11 +278,12 @@ def main():
     plt.axis('off')
     plt.title('Segmentada')
 
-    plt.figtext(0.5, 0.04, f'Área: {int(area)} px, Perímetro: {int(perimetro)} px', ha="center", fontsize=12, bbox={"facecolor":"orange", "alpha":0.5, "pad":5})
-    plt.title("Sementacion de Calcificaciones")
+    global texto_area_perimetro
+    texto_area_perimetro = plt.figtext(0.5, 0.04, 'Área: 0 px, Perímetro: 0 px', ha="center", fontsize=12, bbox={"facecolor":"orange", "alpha":0.5, "pad":5})
+    fig = plt.gcf()  # Obtiene la figura actual
+    cid = fig.canvas.mpl_connect('motion_notify_event', on_move)
 
     plt.show()
-
 
 
 
