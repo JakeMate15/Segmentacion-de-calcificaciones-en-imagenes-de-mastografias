@@ -6,6 +6,7 @@ from scipy import ndimage
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 from PIL import Image, ImageFilter
+import math
 
 coord_x = None
 coord_y = None
@@ -49,6 +50,13 @@ def ajustar_gamma(image, gamma):
 
     return cv2.LUT(image, table)
 
+def topBrillante(arr, porcentaje):
+    arrOrdenado = np.sort(arr)[::-1]
+    porcentaje = porcentaje / 10.0
+    numElementos = math.ceil(len(arrOrdenado) * porcentaje)
+    topPixel = arrOrdenado[:numElementos]
+
+    return topPixel
 
 def segmentacion(ruta, rutaOriginal):
     image = Image.open(ruta)
@@ -74,13 +82,13 @@ def segmentacion(ruta, rutaOriginal):
         positions = np.argwhere(labeled_array == label_num)
         
         # Revisar si alguno de los píxeles está en el borde
-        touching_border = np.any(positions[:, 0] == 0) or \
+        tocandoBorde = np.any(positions[:, 0] == 0) or \
                         np.any(positions[:, 1] == 0) or \
                         np.any(positions[:, 0] == labeled_array.shape[0] - 1) or \
                         np.any(positions[:, 1] == labeled_array.shape[1] - 1)
         
         # Si el componente está tocando el borde, se excluye de la máscara
-        if touching_border:
+        if tocandoBorde:
             mask[labeled_array == label_num] = False
 
     # Aplicar la máscara para obtener la imagen final
@@ -192,7 +200,15 @@ def cal_area_y_perimetro(rutaImagen):
         matriz_areas[i][j] = areas[etiqueta]
         matriz_perimetros[i][j] = perimetros[etiqueta]
 
-    return matriz_areas, matriz_perimetros
+    # Calculando el número total de componentes
+    numero_componentes = len(areas)
+
+    # Calculando la suma total del área y el perímetro
+    suma_area_total = sum(areas.values())
+    suma_perimetro_total = sum(perimetros.values())
+
+    return matriz_areas, matriz_perimetros, numero_componentes, suma_area_total, suma_perimetro_total
+
 
 
 
@@ -247,7 +263,7 @@ def main():
     ruta_contorno = deteccionBordes('imagen_umbralizada.png')
 
     global valoresArea, valoresPerimetro, areaComponente, perimetroComponente
-    valoresArea, valoresPerimetro = cal_area_y_perimetro('imagen_umbralizada.png')
+    valoresArea, valoresPerimetro, numeroComponentes, suma_area_total, suma_perimetro_total = cal_area_y_perimetro('imagen_umbralizada.png')
     img_segmentada = 'imagenSegmentada.jpg'
 
     areas = mpimg.imread(mascara_segmentacion)
@@ -255,7 +271,7 @@ def main():
     img_segmentada = mpimg.imread('imagenSegmentada.jpg')
     original = mpimg.imread(ruta)
 
-    plt.figure(figsize=(10, 10))
+    plt.figure(figsize=(12, 12))
 
     # Mostrar las imágenes
     plt.subplot(2, 2, 1)
@@ -277,6 +293,13 @@ def main():
     plt.imshow(img_segmentada)
     plt.axis('off')
     plt.title('Segmentada')
+
+    infoGeneral = f'Número de Componentes: {numeroComponentes}\n' \
+                    f'Área Total: {suma_area_total} px\n' \
+                    f'Perímetro Total: {suma_perimetro_total} px'
+    plt.figtext(0.5, 0.92, infoGeneral, ha="center", fontsize=12, 
+                bbox={"facecolor":"orange", "alpha":0.5, "pad":5})
+
 
     global texto_area_perimetro
     texto_area_perimetro = plt.figtext(0.5, 0.04, 'Área: 0 px, Perímetro: 0 px', ha="center", fontsize=12, bbox={"facecolor":"orange", "alpha":0.5, "pad":5})
